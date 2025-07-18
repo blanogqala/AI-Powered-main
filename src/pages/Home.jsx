@@ -51,6 +51,7 @@ export default function Home() {
   const [selectedCard, setSelectedCard] = useState(null);
   const { user, logout } = useUser();
   const navigate = useNavigate();
+  const API_URL = process.env.REACT_APP_API_URL || '';
 
   // New: handle form submission from TopicTimelineForm
   const handleGenerate = async ({ topic, timeline, level, specializations }) => {
@@ -58,7 +59,7 @@ export default function Home() {
     setResult(null);
     setFormData({ topic, timeline, level, specializations });
     try {
-      const res = await fetch("/api/generateLearningPath", {
+      const res = await fetch(`${API_URL}/api/generateLearningPath`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

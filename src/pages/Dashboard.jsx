@@ -13,6 +13,8 @@ import Assessments from './Assessments';
 import Grades from './Grades';
 import Purchases from './Purchases';
 
+const API_URL = process.env.REACT_APP_API_URL || '';
+
 const SIDEBAR_ITEMS = [
   { label: "Home", icon: "🏠", path: "/" },
   { label: "Courses", icon: "📚", path: "/dashboard/courses" },
@@ -46,7 +48,7 @@ function CoursesList({ courses, loading, user, refreshCourses }) {
   // Modal enrollment handler
   const handleEnroll = async (learningPath) => {
     try {
-      await fetch("/api/enroll-learning-path", {
+      await fetch(`${API_URL}/api/enroll-learning-path`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user?.uid || "demoUser", learningPath })
@@ -63,7 +65,7 @@ function CoursesList({ courses, loading, user, refreshCourses }) {
     e.stopPropagation();
     setDeleting(prev => ({ ...prev, [course.title]: true }));
     try {
-      await fetch("/api/delete-enrollment", {
+      await fetch(`${API_URL}/api/delete-enrollment`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user?.uid || "demoUser", courseTitle: course.title })
@@ -356,7 +358,7 @@ function CourseLessonView({ courses }) {
     setShowLessonModal(true);
     setSelectedLesson(null);
     try {
-      const res = await fetch("http://localhost:5000/api/generate-content", {
+      const res = await fetch(`${API_URL}/api/generate-content`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -517,7 +519,7 @@ export default function Dashboard() {
   const refreshCourses = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/my-courses?userId=${user?.uid || "demoUser"}`);
+      const res = await fetch(`${API_URL}/api/my-courses?userId=${user?.uid || "demoUser"}`);
       const data = await res.json();
       setCourses(data.enrollments || []);
     } catch (err) {

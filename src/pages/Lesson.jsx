@@ -5,6 +5,8 @@ import { useUser } from "../context/UserContext";
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 
+const API_URL = process.env.REACT_APP_API_URL || '';
+
 function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
@@ -44,7 +46,7 @@ export default function Lesson() {
     async function fetchCourse() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/my-courses?userId=${user?.uid || "demoUser"}`);
+        const res = await fetch(`${API_URL}/api/my-courses?userId=${user?.uid || "demoUser"}`);
         const data = await res.json();
         const found = (data.enrollments || []).find(c => c.title === courseTitle);
         setCourse(found || null);
@@ -84,7 +86,7 @@ export default function Lesson() {
       };
       console.log("[DEBUG] /api/generate-lesson payload:", payload);
       try {
-        const res = await fetch("/api/generate-lesson", {
+        const res = await fetch(`${API_URL}/api/generate-lesson`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
@@ -129,7 +131,7 @@ export default function Lesson() {
       // Try to save badge to backend
       const saveBadge = async () => {
         try {
-          await fetch('/api/complete-course', {
+          await fetch(`${API_URL}/api/complete-course`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

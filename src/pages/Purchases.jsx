@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
 import { useLocation } from "react-router-dom";
 
+const API_URL = process.env.REACT_APP_API_URL || '';
+
 function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
@@ -17,7 +19,7 @@ export default function Purchases() {
     async function fetchCourses() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/my-courses?userId=${user?.uid || "demoUser"}`);
+        const res = await fetch(`${API_URL}/api/my-courses?userId=${user?.uid || "demoUser"}`);
         const data = await res.json();
         setCourses(data.enrollments || []);
       } catch {

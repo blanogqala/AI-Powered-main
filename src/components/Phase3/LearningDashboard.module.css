@@ -1,0 +1,75 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 700px;
+  margin: 2rem auto;
+}
+.progressCard {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  padding: 1.5rem;
+}
+.progressLabel {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.progressBarBg {
+  background: #e0e0e0;
+  border-radius: 8px;
+  height: 18px;
+  width: 100%;
+  overflow: hidden;
+}
+.progressBarFill {
+  background: linear-gradient(90deg, #4f8cff 0%, #6be7ff 100%);
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.5s;
+}
+.currentCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8faff;
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+.continueBtn {
+  background: #4f8cff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.8rem 1.5rem;
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.continueBtn:hover {
+  background: #3576d3;
+}
+.achievementsCard {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1.2rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+}
+.badges {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.7rem;
+}
+.badge {
+  background: #e0f7fa;
+  color: #00796b;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+}
+.noBadge {
+  color: #aaa;
+  font-style: italic;
+}

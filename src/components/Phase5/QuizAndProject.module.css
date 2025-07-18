@@ -1,0 +1,36 @@
+.quizProject {
+  display: flex;
+  gap: 2rem;
+  margin: 2rem auto;
+  max-width: 900px;
+}
+.quizCard, .projectCard {
+  flex: 1;
+  background: #fff;
+  border-radius: 14px;
+  padding: 2rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+}
+.question {
+  margin-bottom: 1.2rem;
+}
+.score {
+  color: #43a047;
+  font-weight: 600;
+  margin-top: 1rem;
+}
+.rubric {
+  margin: 1rem 0;
+}
+.aiFeedback {
+  background: #e3f2fd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+@media (max-width: 900px) {
+  .quizProject {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}

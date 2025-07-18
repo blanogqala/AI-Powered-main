@@ -1,0 +1,66 @@
+.glassCard {
+  background: rgba(255,255,255,0.7);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
+  padding: 2.5rem 2rem;
+  width: 90%;
+  height: 550px;
+  margin: 2rem auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  backdrop-filter: blur(8px);
+}
+.input {
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1.5px solid #e0e0e0;
+  font-size: 1.1em;
+  width: 95%;
+  
+}
+.timelineGroup {
+  display: flex;
+  gap: 0.7rem;
+  justify-content: space-between;
+}
+.timelineBtn {
+  flex: 1;
+  padding: 0.7rem 0;
+  border-radius: 8px;
+  border: none;
+  background: #f3f3f3;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.timelineBtn.selected, .timelineBtn:hover {
+  background: #4f8cff;
+  color: #fff;
+}
+.levelGroup {
+  display: flex;
+  gap: 1.2rem;
+  justify-content: center;
+}
+.levelLabel {
+  font-weight: 500;
+  font-size: 1em;
+}
+.generateBtn {
+  margin-top: 1.5rem;
+  padding: 1.1rem 0;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(90deg, #4f8cff 0%, #6be7ff 100%);
+  color: #fff;
+  font-size: 1.2em;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(79,140,255,0.08);
+  transition: background 0.2s, transform 0.2s;
+}
+.generateBtn:disabled {
+  background: #b3d1ff;
+  cursor: not-allowed;
+}

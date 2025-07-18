@@ -1,0 +1,24 @@
+{
+  "name": "ai_powered",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@firebase/firestore": "^4.8.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.0.1",
+    "express": "^5.1.0",
+    "firebase": "^11.10.0",
+    "firebase-admin": "^11.11.1",
+    "langchain": "^0.0.152",
+    "openai": "^5.8.2"
+  }
+}

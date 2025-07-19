@@ -250,6 +250,15 @@ app.delete('/api/delete-enrollment', async (req, res) => {
   }
 });
 
+app.get('/firestore-test', async (req, res) => {
+  try {
+    const snapshot = await admin.firestore().collection('curriculums').limit(1).get();
+    res.json({ success: true, count: snapshot.size });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/test', (req, res) => {
   res.json({ message: "Backend is working and public!" });
 });

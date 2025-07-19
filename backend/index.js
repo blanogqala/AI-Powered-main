@@ -23,7 +23,13 @@ const { gradeShortAnswer } = require('./agents/assessmentAgent');
 const admin = require('firebase-admin');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    "https://astonishing-semolina-112792.netlify.app",
+    "http://localhost:3000"
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 app.use("/api/generateLearningPath", generateLearningPath);

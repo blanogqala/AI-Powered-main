@@ -1,10 +1,19 @@
 const admin = require('firebase-admin');
-const serviceAccount = require('./learning-platform-3364f-ee05c72a092a.json');
+
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+  serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+} else {
+  serviceAccount = require('./learning-platform-3364f-ee05c72a092a.json');
+}
 
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     projectId: serviceAccount.project_id,
+    databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`,
   });
 }
 const db = admin.firestore();

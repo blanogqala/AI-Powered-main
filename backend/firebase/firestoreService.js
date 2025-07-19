@@ -3,8 +3,14 @@ const admin = require('firebase-admin');
 let serviceAccount;
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  if (serviceAccount.private_key) {
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+  }
 } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
   serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+  if (serviceAccount.private_key) {
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+  }
 } else {
   serviceAccount = require('./learning-platform-3364f-ee05c72a092a.json');
 }

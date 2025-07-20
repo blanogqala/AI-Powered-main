@@ -6,44 +6,11 @@ import { useUser } from "../context/UserContext";
 import { FaUserCircle, FaSearch, FaSignOutAlt, FaTachometerAlt } from 'react-icons/fa';
 import { useNavigate } from "react-router-dom";
 import GeneratedLearningPath from "../components/ui/GeneratedLearningPath";
-
-// Spinner component for loading overlay
-function SpinnerOverlay({ loading }) {
-  if (!loading) return null;
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
-      background: 'rgba(100, 100, 100, 0.35)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 9999
-    }}>
-      <div style={{
-        width: 70,
-        height: 70,
-        border: '8px solid #e0e0e0',
-        borderTop: '8px solid #3576d3',
-        borderRadius: '50%',
-        animation: 'spin 1s linear infinite',
-        background: 'rgba(255,255,255,0.7)'
-      }} />
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
-    </div>
-  );
-}
+import CenteredLoadingBar from "../components/ui/CenteredLoadingBar";
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
+  const [enrolling, setEnrolling] = useState(false); // NEW: loading overlay for dashboard navigation
   const [result, setResult] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({});
@@ -52,12 +19,15 @@ export default function Home() {
   const { user, logout } = useUser();
   const navigate = useNavigate();
   const API_URL = process.env.REACT_APP_API_URL || '';
+  const [abortController, setAbortController] = useState(null); // For cancellation
 
   // New: handle form submission from TopicTimelineForm
   const handleGenerate = async ({ topic, timeline, level, specializations }) => {
     setLoading(true);
     setResult(null);
     setFormData({ topic, timeline, level, specializations });
+    const controller = new AbortController();
+    setAbortController(controller);
     try {
       const res = await fetch(`${API_URL}/api/generateLearningPath`, {
         method: "POST",
@@ -68,19 +38,29 @@ export default function Home() {
           level,
           specializations,
           userId: user?.uid || "demoUser"
-        })
+        }),
+        signal: controller.signal
       });
+      if (!res.ok) throw new Error("Failed to generate learning path.");
       const dataRes = await res.json();
-      // The backend now returns { learningPaths, savedIds }
       setResult({ learningPaths: dataRes.learningPaths });
       if (Array.isArray(dataRes.learningPaths)) {
         localStorage.setItem(`recommendedPaths_${user?.uid || "demoUser"}`, JSON.stringify(dataRes.learningPaths));
       }
     } catch (err) {
-      alert("Failed to generate learning path.");
+      if (err.name !== 'AbortError') {
+        alert("Failed to generate learning path.");
+      }
     } finally {
       setLoading(false);
+      setAbortController(null);
     }
+  };
+
+  const handleCancelGenerate = () => {
+    if (abortController) abortController.abort();
+    setLoading(false);
+    setAbortController(null);
   };
 
   const handleLogout = async () => {
@@ -93,7 +73,12 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: "100vh", width: "100vw", background: "#f4f8fb", position: 'relative' }}>
-      <SpinnerOverlay loading={loading} />
+      {(loading || enrolling) && (
+        <CenteredLoadingBar
+          label={loading ? "Generating learning path..." : "Enrolling, please wait..."}
+          onCancel={loading ? handleCancelGenerate : () => setEnrolling(false)}
+        />
+      )}
       {/* Fixed Nav Bar */}
       <nav style={{
         position: 'fixed',
@@ -238,9 +223,10 @@ export default function Home() {
             result={cards[selectedCard]}
             formData={formData}
             userId={user?.uid || "demoUser"}
+            setEnrolling={setEnrolling}
             onStartLearning={() => {
               setShowModal(false);
-              // Optionally, you can refresh courses here if needed
+              setEnrolling(true); // Show loading overlay before navigating
               navigate("/dashboard");
             }}
           />

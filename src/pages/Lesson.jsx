@@ -4,6 +4,7 @@ import LessonView from "../components/Phase4/LessonView";
 import { useUser } from "../context/UserContext";
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
+import CenteredLoadingBar from "../components/ui/CenteredLoadingBar";
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
@@ -29,6 +30,41 @@ function getSubtopics(module) {
   return [];
 }
 
+// Add SpinnerOverlay at the top
+function SpinnerOverlay({ loading }) {
+  if (!loading) return null;
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      background: 'rgba(100, 100, 100, 0.35)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999
+    }}>
+      <div style={{
+        width: 70,
+        height: 70,
+        border: '8px solid #e0e0e0',
+        borderTop: '8px solid #3576d3',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite',
+        background: 'rgba(255,255,255,0.7)'
+      }} />
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export default function Lesson() {
   const { user } = useUser();
   const query = useQuery();
@@ -41,6 +77,8 @@ export default function Lesson() {
   const [completedTopics, setCompletedTopics] = useState([]); // [{moduleIdx, subIdx}]
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
+  const [lessonLoading, setLessonLoading] = useState(false); // NEW: loading overlay for lesson content
+  const [lessonAbortController, setLessonAbortController] = useState(null); // For cancellation
 
   useEffect(() => {
     async function fetchCourse() {
@@ -75,6 +113,9 @@ export default function Lesson() {
       const subtopics = getSubtopics(modObj);
       const subtopic = subtopics[selectedSubtopic.subIdx];
       setLessonContent(null);
+      setLessonLoading(true); // Show loading overlay
+      const controller = new AbortController();
+      setLessonAbortController(controller);
       // Add logging for debugging
       const payload = {
         userId: user?.uid || "demoUser",
@@ -89,24 +130,30 @@ export default function Lesson() {
         const res = await fetch(`${API_URL}/api/generate-lesson`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          signal: controller.signal
         });
         const data = await res.json();
         setLessonContent(data); // { lesson, quiz, project }
-      } catch {
-        setLessonContent({
-          lesson: {
-            title: subtopic,
-            objectives: [
-              `Understand the basics of ${subtopic}`,
-              `Apply ${subtopic} in practice`
-            ],
-            body: `Welcome to ${subtopic}! (AI content unavailable)`,
-            summary: `Key takeaways for ${subtopic}`
-          },
-          quiz: [],
-          project: null
-        });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          setLessonContent({
+            lesson: {
+              title: subtopic,
+              objectives: [
+                `Understand the basics of ${subtopic}`,
+                `Apply ${subtopic} in practice`
+              ],
+              body: `Welcome to ${subtopic}! (AI content unavailable)`,
+              summary: `Key takeaways for ${subtopic}`
+            },
+            quiz: [],
+            project: null
+          });
+        }
+      } finally {
+        setLessonLoading(false); // Hide loading overlay
+        setLessonAbortController(null);
       }
     }
     if (course) fetchLesson();
@@ -153,6 +200,12 @@ export default function Lesson() {
       saveBadge();
     }
   }, [progress, course, user]);
+
+  const handleCancelLessonLoad = () => {
+    if (lessonAbortController) lessonAbortController.abort();
+    setLessonLoading(false);
+    setLessonAbortController(null);
+  };
 
   if (loading) return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f4f8fb' }}>
@@ -208,6 +261,12 @@ export default function Lesson() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f4f8fb' }}>
+      {lessonLoading && (
+        <CenteredLoadingBar
+          label="Busy loading lessons..."
+          onCancel={handleCancelLessonLoad}
+        />
+      )}
       {/* Timeline Navigation Bar */}
       <div style={{
         display: 'flex',

@@ -112,7 +112,7 @@ export default function LessonQuiz({ lessonId, userId, quiz, lessonBody }) {
           <div style={{ fontWeight: 600, fontSize: 17, marginBottom: 10 }}>{idx + 1}. {q.question}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {q.options ? q.options.map(opt => (
-              <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: submitted ? 'default' : 'pointer', fontWeight: 500 }}>
+              <label key={opt} style={{marginRight:630, display: 'flex', alignItems: 'center', gap: 8, cursor: submitted ? 'default' : 'pointer', fontWeight: 500 }}>
                 <input
                   type="radio"
                   name={q.id}
@@ -120,7 +120,7 @@ export default function LessonQuiz({ lessonId, userId, quiz, lessonBody }) {
                   checked={answers[q.id] === opt}
                   onChange={() => handleSelect(q.id, opt)}
                   disabled={submitted}
-                  style={{ accentColor: '#4f8cff' }}
+                  style={{accentColor: '#4f8cff' }}
                   required={q.type === "mcq"}
                 />
                 {opt}
@@ -135,7 +135,7 @@ export default function LessonQuiz({ lessonId, userId, quiz, lessonBody }) {
                 value={answers[q.id] || ""}
                 onChange={e => handleSelect(q.id, e.target.value)}
                 disabled={submitted}
-                style={{ width: '100%', minHeight: 60, borderRadius: 6, border: '1.5px solid #e0e0e0', padding: '0.5rem', fontSize: '1em' }}
+                style={{ width: '100%', minHeight: 60, borderRadius: 6, border: '1.5px solid rgb(211, 211, 211)', padding: '0.5rem', fontSize: '1em' }}
                 placeholder="Type your answer here..."
                 required={q.type === "short"}
               />

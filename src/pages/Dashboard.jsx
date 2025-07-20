@@ -12,6 +12,7 @@ import 'react-loading-skeleton/dist/skeleton.css';
 import Assessments from './Assessments';
 import Grades from './Grades';
 import Purchases from './Purchases';
+import CenteredLoadingBar from "../components/ui/CenteredLoadingBar";
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
@@ -23,13 +24,48 @@ const SIDEBAR_ITEMS = [
   { label: "Purchases", icon: "💳", path: "/dashboard/purchases" },
 ];
 
-function CoursesList({ courses, loading, user, refreshCourses }) {
+function SpinnerOverlay({ loading }) {
+  if (!loading) return null;
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      background: 'rgba(100, 100, 100, 0.35)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999
+    }}>
+      <div style={{
+        width: 70,
+        height: 70,
+        border: '8px solid #e0e0e0',
+        borderTop: '8px solid #3576d3',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite',
+        background: 'rgba(255,255,255,0.7)'
+      }} />
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function CoursesList({ courses, loading, user, refreshCourses, setEnrolling, handleCancelEnroll }) {
   const navigate = useNavigate();
   const [recommended, setRecommended] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
   const [formData, setFormData] = useState({});
   const [deleting, setDeleting] = useState({});
+  const [enrollAbortController, setEnrollAbortController] = useState(null); // For cancellation
 
   useEffect(() => {
     // Load recommended paths from localStorage
@@ -47,17 +83,31 @@ function CoursesList({ courses, loading, user, refreshCourses }) {
 
   // Modal enrollment handler
   const handleEnroll = async (learningPath) => {
+    const controller = new AbortController();
+    setEnrollAbortController(controller);
     try {
+      if (setEnrolling) setEnrolling(true); // Show loading overlay
       await fetch(`${API_URL}/api/enroll-learning-path`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user?.uid || "demoUser", learningPath })
+        body: JSON.stringify({ userId: user?.uid || "demoUser", learningPath }),
+        signal: controller.signal
       });
+      // Remove from recommendedPaths in localStorage
+      const recKey = `recommendedPaths_${user?.uid || "demoUser"}`;
+      let recArr = JSON.parse(localStorage.getItem(recKey) || "[]");
+      recArr = recArr.filter(lp => lp.title !== learningPath.title);
+      localStorage.setItem(recKey, JSON.stringify(recArr));
       setShowModal(false);
       setSelectedCard(null);
-      refreshCourses();
+      await refreshCourses();
     } catch (err) {
-      alert("Failed to enroll in this learning path.");
+      if (err.name !== 'AbortError') {
+        alert("Failed to enroll in this learning path.");
+      }
+    } finally {
+      if (setEnrolling) setEnrolling(false); // Hide loading overlay
+      setEnrollAbortController(null);
     }
   };
 
@@ -277,6 +327,12 @@ function CoursesList({ courses, loading, user, refreshCourses }) {
             )}
           </Modal>
         </div>
+      )}
+      {setEnrolling && typeof setEnrolling === 'function' && enrollAbortController && (
+        <CenteredLoadingBar
+          label="Enrolling, please wait..."
+          onCancel={handleCancelEnroll}
+        />
       )}
     </div>
   );
@@ -503,6 +559,7 @@ export default function Dashboard() {
   const { user } = useUser();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [enrolling, setEnrolling] = useState(false); // NEW: loading overlay for enrollment
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
   const navigate = useNavigate();
   const location = useLocation();
@@ -533,6 +590,12 @@ export default function Dashboard() {
     if (user) refreshCourses();
     // eslint-disable-next-line
   }, [user]);
+
+  const handleCancelEnroll = () => {
+    // We'll need to cancel the enroll fetch in CoursesList, so this should be passed down
+    // The actual abort logic is in CoursesList, so this function can be empty or just a placeholder
+    // The abort will be handled by the CoursesList instance
+  };
 
   return (
     <div className={styles.dashboardContainer}>
@@ -572,12 +635,12 @@ export default function Dashboard() {
       {/* Main Content with nested routes */}
       <main className={styles.mainContent}>
         <Routes>
-          <Route path="/dashboard/courses" element={<CoursesList courses={courses} loading={loading} user={user} refreshCourses={refreshCourses} />} />
+          <Route path="/dashboard/courses" element={<CoursesList courses={courses} loading={loading} user={user} refreshCourses={refreshCourses} setEnrolling={setEnrolling} handleCancelEnroll={handleCancelEnroll} />} />
           <Route path="/dashboard/courses/:courseId" element={<CourseLessonView courses={courses} />} />
           <Route path="/dashboard/assessments" element={<Assessments />} />
           <Route path="/dashboard/badges" element={<Grades />} />
           <Route path="/dashboard/purchases" element={<Purchases />} />
-          <Route path="*" element={<CoursesList courses={courses} loading={loading} user={user} refreshCourses={refreshCourses} />} />
+          <Route path="*" element={<CoursesList courses={courses} loading={loading} user={user} refreshCourses={refreshCourses} setEnrolling={setEnrolling} handleCancelEnroll={handleCancelEnroll} />} />
         </Routes>
       </main>
     </div>

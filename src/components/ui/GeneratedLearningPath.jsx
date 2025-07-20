@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function GeneratedLearningPath({ result, formData, onStartLearning, userId }) {
+export default function GeneratedLearningPath({ result, formData, onStartLearning, userId, setEnrolling }) {
   const [tab, setTab] = useState("curriculum");
   const [resources, setResources] = useState(null);
   const [loadingResources, setLoadingResources] = useState(false);
@@ -34,14 +34,22 @@ export default function GeneratedLearningPath({ result, formData, onStartLearnin
   // Handle enrollment
   const handleStartLearning = async () => {
     try {
+      if (setEnrolling) setEnrolling(true); // Show loading overlay
       await fetch("/api/enroll-learning-path", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, learningPath: result })
       });
-      onStartLearning();
+      // Remove from recommendedPaths in localStorage
+      const recKey = `recommendedPaths_${userId}`;
+      let recArr = JSON.parse(localStorage.getItem(recKey) || "[]");
+      recArr = recArr.filter(lp => lp.title !== result.title);
+      localStorage.setItem(recKey, JSON.stringify(recArr));
+      if (onStartLearning) onStartLearning();
     } catch (err) {
       alert("Failed to enroll in this learning path.");
+    } finally {
+      if (setEnrolling) setEnrolling(false); // Hide loading overlay
     }
   };
 

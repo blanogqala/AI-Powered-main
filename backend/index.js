@@ -21,6 +21,7 @@ const { gradeProjectSubmission } = require('./agents/assessmentAgent');
 const { saveUserProjectGrade } = require('./firebase/firestoreService');
 const { gradeShortAnswer } = require('./agents/assessmentAgent');
 const admin = require('firebase-admin');
+const enrollLearningPath = require('./api/enroll-learning-path');
 
 const app = express();
 app.use(cors({
@@ -33,6 +34,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use("/api/generateLearningPath", generateLearningPath);
+app.use('/api/enroll-learning-path', enrollLearningPath);
 
 app.post('/api/generate-curriculum', async (req, res) => {
   const { topic, timeline, level, userId } = req.body;

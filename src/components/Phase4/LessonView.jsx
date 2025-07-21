@@ -1,169 +1,306 @@
-import React, { useState, useEffect } from "react";
-import LessonContent from "./LessonContent";
-import LessonQuiz from "./LessonQuiz";
-import NotesTab from "./NotesTab";
-import TranscriptTab from "./TranscriptTab";
-import DiscussionTab from "./DiscussionTab";
-import ProgressFooter from "./ProgressFooter";
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
-import app from "../../firebase";
+"use client"
 
-/**
- * LessonView Orchestrator
- * Props:
- * - lessonId: string
- * - userId: string
- * - lessonData: object (optional, if already loaded)
- *
- * Handles loading, tab state, and passes data to subcomponents.
- * Prepares for future AI assistant/resource sidebar.
- */
+import { useState, useEffect } from "react"
+import LessonContent from "./LessonContent"
+import LessonQuiz from "./LessonQuiz"
+import NotesTab from "./NotesTab"
+import TranscriptTab from "./TranscriptTab"
+import DiscussionTab from "./DiscussionTab"
+import ProgressFooter from "./ProgressFooter"
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore"
+import app from "../../firebase"
+import { FaBook, FaStickyNote, FaFileAlt, FaComments, FaQuestionCircle, FaRocket } from "react-icons/fa"
+
 export default function LessonView({ lessonId, userId, lessonData: lessonDataProp, quizData, projectData }) {
-  const [tab, setTab] = useState("lesson");
-  const [lessonData, setLessonData] = useState(lessonDataProp || null);
-  // Remove quiz state and fetch logic; use quizData prop only
-  const [loading, setLoading] = useState(!lessonDataProp);
-  const [error, setError] = useState("");
-  const [progress, setProgress] = useState(0); // 0-100
-  const [isComplete, setIsComplete] = useState(false);
-  const [progressError, setProgressError] = useState("");
-  const db = getFirestore(app);
+  const [tab, setTab] = useState("lesson")
+  const [lessonData, setLessonData] = useState(lessonDataProp || null)
+  const [loading, setLoading] = useState(!lessonDataProp)
+  const [error, setError] = useState("")
+  const [progress, setProgress] = useState(0)
+  const [isComplete, setIsComplete] = useState(false)
+  const [progressError, setProgressError] = useState("")
+  const db = getFirestore(app)
 
   // Sync lessonData with lessonDataProp when it changes
   useEffect(() => {
-    setLessonData(lessonDataProp || null);
-  }, [lessonDataProp]);
+    setLessonData(lessonDataProp || null)
+  }, [lessonDataProp])
 
   // Fetch lesson data if not provided
   useEffect(() => {
-    if (lessonDataProp) return;
-    let isMounted = true;
+    if (lessonDataProp) return
+    let isMounted = true
     async function fetchLesson() {
-      setLoading(true);
-      setError("");
+      setLoading(true)
+      setError("")
       try {
-        // Fetch from backend
         const res = await fetch("/api/generate-lesson", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ courseTitle: lessonId, moduleTitle: "", subtopic: "", level: "", timeline: "" }) // TODO: Replace with actual props/values
-        });
-        if (!res.ok) throw new Error("Failed to fetch lesson");
-        const data = await res.json();
-        if (isMounted) setLessonData(data);
+          body: JSON.stringify({
+            courseTitle: lessonId,
+            moduleTitle: "",
+            subtopic: "",
+            level: "",
+            timeline: "",
+          }),
+        })
+        if (!res.ok) throw new Error("Failed to fetch lesson")
+        const data = await res.json()
+        if (isMounted) setLessonData(data)
       } catch (err) {
-        if (isMounted) setError("Could not load lesson. Please try again later.");
+        if (isMounted) setError("Could not load lesson. Please try again later.")
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) setLoading(false)
       }
     }
-    if (lessonId && !lessonDataProp) fetchLesson();
-    return () => { isMounted = false; };
-  }, [lessonId, lessonDataProp]);
-
-  // Remove useEffect that fetches quiz from /api/lesson/.../quiz
+    if (lessonId && !lessonDataProp) fetchLesson()
+    return () => {
+      isMounted = false
+    }
+  }, [lessonId, lessonDataProp])
 
   // Fetch progress for this lesson
   useEffect(() => {
-    let isMounted = true;
+    let isMounted = true
     async function fetchProgress() {
-      setProgressError("");
+      setProgressError("")
       try {
-        // Try Firestore first
-        const progressRef = doc(db, "lessonProgress", `${userId}_${lessonId}`);
-        const snap = await getDoc(progressRef);
+        const progressRef = doc(db, "lessonProgress", `${userId}_${lessonId}`)
+        const snap = await getDoc(progressRef)
         if (isMounted && snap.exists()) {
-          const data = snap.data();
-          setProgress(data.progress || 0);
-          setIsComplete(!!data.isComplete);
+          const data = snap.data()
+          setProgress(data.progress || 0)
+          setIsComplete(!!data.isComplete)
         } else {
-          // Fallback: localStorage
-          const key = `lessonProgress_${userId}_${lessonId}`;
-          const saved = localStorage.getItem(key);
+          const key = `lessonProgress_${userId}_${lessonId}`
+          const saved = localStorage.getItem(key)
           if (isMounted && saved) {
-            const data = JSON.parse(saved);
-            setProgress(data.progress || 0);
-            setIsComplete(!!data.isComplete);
+            const data = JSON.parse(saved)
+            setProgress(data.progress || 0)
+            setIsComplete(!!data.isComplete)
           }
         }
       } catch (err) {
-        // Fallback: localStorage
-        const key = `lessonProgress_${userId}_${lessonId}`;
-        const saved = localStorage.getItem(key);
+        const key = `lessonProgress_${userId}_${lessonId}`
+        const saved = localStorage.getItem(key)
         if (isMounted && saved) {
-          const data = JSON.parse(saved);
-          setProgress(data.progress || 0);
-          setIsComplete(!!data.isComplete);
+          const data = JSON.parse(saved)
+          setProgress(data.progress || 0)
+          setIsComplete(!!data.isComplete)
         }
-        setProgressError("Failed to load progress from Firestore. Using local storage.");
+        setProgressError("Failed to load progress from Firestore. Using local storage.")
       }
     }
-    if (lessonId && userId) fetchProgress();
-    return () => { isMounted = false; };
-  }, [lessonId, userId, db]);
+    if (lessonId && userId) fetchProgress()
+    return () => {
+      isMounted = false
+    }
+  }, [lessonId, userId, db])
 
   // Handler: Mark as complete
   const handleMarkComplete = async () => {
-    setIsComplete(true);
-    setProgress(100);
-    setProgressError("");
+    setIsComplete(true)
+    setProgress(100)
+    setProgressError("")
     try {
-      // Try Firestore first
-      const progressRef = doc(db, "lessonProgress", `${userId}_${lessonId}`);
-      await setDoc(progressRef, { progress: 100, isComplete: true, userId, lessonId, updated: Date.now() });
+      const progressRef = doc(db, "lessonProgress", `${userId}_${lessonId}`)
+      await setDoc(progressRef, {
+        progress: 100,
+        isComplete: true,
+        userId,
+        lessonId,
+        updated: Date.now(),
+      })
     } catch (err) {
-      // Fallback: localStorage
-      const key = `lessonProgress_${userId}_${lessonId}`;
-      localStorage.setItem(key, JSON.stringify({ progress: 100, isComplete: true }));
-      setProgressError("Saved to local storage only (Firestore unavailable).");
+      const key = `lessonProgress_${userId}_${lessonId}`
+      localStorage.setItem(key, JSON.stringify({ progress: 100, isComplete: true }))
+      setProgressError("Saved to local storage only (Firestore unavailable).")
     }
-  };
+  }
 
   // Handler: Next lesson (placeholder)
   const handleNextLesson = () => {
-    // TODO: Implement navigation to next lesson
-    alert("Next lesson coming soon!");
-  };
+    alert("Next lesson coming soon!")
+  }
 
   // Loading and error states
-  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading lesson...</div>;
-  if (error) return <div style={{ padding: 40, textAlign: 'center', color: '#d32f2f' }}>{error}</div>;
-  if (!lessonData) return <div style={{ padding: 40, textAlign: 'center', color: '#d32f2f' }}>Lesson not found.</div>;
+  if (loading)
+    return (
+      <div
+        style={{
+          padding: 60,
+          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 20,
+        }}
+      >
+        <div
+          style={{
+            width: 60,
+            height: 60,
+            border: "6px solid rgba(255, 107, 107, 0.1)",
+            borderTop: "6px solid #ff6b6b",
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite",
+          }}
+        />
+        <div style={{ color: "#ff6b6b", fontSize: 18, fontWeight: 600 }}>Loading lesson...</div>
+        <style>
+          {`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}
+        </style>
+      </div>
+    )
 
-  // Tab navigation
+  if (error)
+    return (
+      <div
+        style={{
+          padding: 60,
+          textAlign: "center",
+          color: "#ff5252",
+          fontSize: 18,
+          fontWeight: 600,
+          background: "rgba(255, 82, 82, 0.1)",
+          borderRadius: 12,
+          border: "2px solid rgba(255, 82, 82, 0.2)",
+        }}
+      >
+        ⚠️ {error}
+      </div>
+    )
+
+  if (!lessonData)
+    return (
+      <div
+        style={{
+          padding: 60,
+          textAlign: "center",
+          color: "#ff5252",
+          fontSize: 18,
+          fontWeight: 600,
+          background: "rgba(255, 82, 82, 0.1)",
+          borderRadius: 12,
+          border: "2px solid rgba(255, 82, 82, 0.2)",
+        }}
+      >
+        📚 Lesson not found.
+      </div>
+    )
+
+  // Enhanced tab navigation with icons
   const tabs = [
-    { key: "lesson", label: "Lesson" },
-    { key: "notes", label: "Notes" },
-    { key: "transcript", label: "Transcript" },
-    { key: "discussion", label: "Discussion" },
-    { key: "quiz", label: "Quiz & Project" },
-  ];
+    { key: "lesson", label: "Lesson", icon: FaBook, color: "#ff6b6b" },
+    { key: "notes", label: "Notes", icon: FaStickyNote, color: "#ffa726" },
+    { key: "transcript", label: "Transcript", icon: FaFileAlt, color: "#66bb6a" },
+    { key: "discussion", label: "Discussion", icon: FaComments, color: "#42a5f5" },
+    { key: "quiz", label: "Quiz & Project", icon: FaQuestionCircle, color: "#ab47bc" },
+  ]
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', minHeight: 600, background: '#fff', borderRadius: 14, boxShadow: '0 2px 12px rgba(31,38,135,0.07)', padding: '2.5rem 2rem', position: 'relative' }}>
-      {/* Tab Navigation */}
-      <div style={{ display: 'flex', gap: 24, borderBottom: '1.5px solid #e0e0e0', marginBottom: 18 }}>
-        {tabs.map(t => (
+    <div
+      style={{
+        maxWidth: 950,
+        margin: "0 auto",
+        minHeight: 600,
+        background: "rgba(255, 255, 255, 0.98)",
+        backdropFilter: "blur(20px)",
+        borderRadius: 20,
+        boxShadow: "0 8px 32px rgba(255, 107, 107, 0.12)",
+        padding: "2.5rem 2.5rem",
+        position: "relative",
+        border: "1px solid rgba(255, 107, 107, 0.1)",
+        overflow: "hidden",
+      }}
+    >
+      {/* Decorative elements */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 4,
+          background: "linear-gradient(90deg, #ff6b6b, #ffa726, #66bb6a, #42a5f5, #ab47bc)",
+          borderRadius: "20px 20px 0 0",
+        }}
+      />
+
+      {/* Enhanced Tab Navigation */}
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          marginBottom: 24,
+          background: "rgba(255, 255, 255, 0.6)",
+          padding: "0.5rem",
+          borderRadius: 16,
+          border: "1px solid rgba(255, 107, 107, 0.1)",
+        }}
+      >
+        {tabs.map((t) => {
+          const IconComponent = t.icon
+          const isActive = tab === t.key
+          return (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             style={{
-              background: "none",
+                background: isActive ? `linear-gradient(135deg, ${t.color} 0%, ${t.color}80 100%)` : "transparent",
               border: "none",
-              borderBottom: tab === t.key ? "2.5px solid #4f8cff" : "none",
-              color: tab === t.key ? "#3576d3" : "#888",
-              fontWeight: tab === t.key ? 700 : 500,
-              fontSize: 16,
-              padding: "0.5rem 0.7rem",
-              cursor: "pointer"
-            }}
-          >
+                color: isActive ? "#fff" : t.color,
+                fontWeight: isActive ? 700 : 500,
+                fontSize: 15,
+                padding: "0.8rem 1.2rem",
+                cursor: "pointer",
+                borderRadius: 12,
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flex: 1,
+                justifyContent: "center",
+                position: "relative",
+                overflow: "hidden",
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.target.style.background = `${t.color}15`
+                  e.target.style.transform = "translateY(-2px)"
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.target.style.background = "transparent"
+                  e.target.style.transform = "translateY(0)"
+                }
+              }}
+            >
+              <IconComponent style={{ fontSize: 16 }} />
             {t.label}
           </button>
-        ))}
+          )
+        })}
       </div>
-      {/* Tab Content */}
-      <div style={{ minHeight: 350 }}>
+
+      {/* Enhanced Tab Content */}
+      <div
+        style={{
+          minHeight: 400,
+          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 255, 0.9) 100%)",
+          borderRadius: 16,
+          padding: "2rem 2.5rem",
+          border: "1px solid rgba(255, 107, 107, 0.1)",
+          position: "relative",
+        }}
+      >
         {tab === "lesson" && (
           <LessonContent
             title={lessonData.title}
@@ -173,44 +310,115 @@ export default function LessonView({ lessonId, userId, lessonData: lessonDataPro
             videoUrl={lessonData.videoUrl}
           />
         )}
-        {tab === "notes" && (
-          <NotesTab lessonId={lessonId} userId={userId} />
-        )}
-        {tab === "transcript" && (
-          <TranscriptTab lessonId={lessonId} />
-        )}
-        {tab === "discussion" && (
-          <DiscussionTab lessonId={lessonId} />
-        )}
+        {tab === "notes" && <NotesTab lessonId={lessonId} userId={userId} />}
+        {tab === "transcript" && <TranscriptTab lessonId={lessonId} />}
+        {tab === "discussion" && <DiscussionTab lessonId={lessonId} />}
         {tab === "quiz" && (
           <div>
             <LessonQuiz lessonId={lessonId} userId={userId} quiz={quizData} lessonBody={lessonData?.body} />
             {projectData && (
-              <div style={{ marginTop: 36, background: '#f8faff', borderRadius: 10, padding: '2rem 1.5rem' }}>
-                <h3 style={{ color: '#3576d3', fontWeight: 700, fontSize: 22, marginBottom: 12 }}>Project</h3>
-                <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 8 }}>{projectData.title}</div>
-                <div style={{ color: '#444', fontSize: 16, marginBottom: 12 }}>{projectData.description}</div>
+              <div
+                style={{
+                  marginTop: 40,
+                  background: "linear-gradient(135deg, rgba(171, 71, 188, 0.1) 0%, rgba(255, 167, 38, 0.1) 100%)",
+                  borderRadius: 16,
+                  padding: "2.5rem 2rem",
+                  border: "2px solid rgba(171, 71, 188, 0.2)",
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: -10,
+                    right: -10,
+                    fontSize: 40,
+                    opacity: 0.1,
+                  }}
+                >
+                  🚀
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 16,
+                  }}
+                >
+                  <FaRocket style={{ color: "#ab47bc", fontSize: 24 }} />
+                  <h3
+                    style={{
+                      background: "linear-gradient(135deg, #ab47bc 0%, #ffa726 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      fontWeight: 700,
+                      fontSize: 24,
+                      margin: 0,
+                    }}
+                  >
+                    Project Challenge
+                  </h3>
+                </div>
+                <div
+                  style={{
+                    fontWeight: 700,
+                    fontSize: 20,
+                    marginBottom: 12,
+                    color: "#333",
+                  }}
+                >
+                  {projectData.title}
+                </div>
+                <div
+                  style={{
+                    color: "#555",
+                    fontSize: 16,
+                    marginBottom: 16,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {projectData.description}
+                </div>
                 {projectData.instructions && (
-                  <div style={{ marginBottom: 12 }}>
-                    <strong>Instructions:</strong>
-                    <ol style={{ marginTop: 6 }}>
+                  <div style={{ marginBottom: 16 }}>
+                    <strong style={{ color: "#ab47bc", fontSize: 16 }}>Instructions:</strong>
+                    <ol style={{ marginTop: 8, paddingLeft: 20 }}>
                       {projectData.instructions.map((inst, idx) => (
-                        <li key={idx} style={{ marginBottom: 4 }}>{inst}</li>
+                        <li
+                          key={idx}
+                          style={{
+                            marginBottom: 8,
+                            color: "#555",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {inst}
+                        </li>
                       ))}
                     </ol>
                   </div>
                 )}
                 {projectData.rubric && (
-                  <div style={{ marginTop: 10 }}>
-                    <strong>Rubric:</strong>
-                    <ul style={{ marginTop: 6 }}>
+                  <div style={{ marginTop: 16 }}>
+                    <strong style={{ color: "#ab47bc", fontSize: 16 }}>Grading Rubric:</strong>
+                    <ul style={{ marginTop: 8, paddingLeft: 20 }}>
                       {projectData.rubric.map((r, idx) => (
-                        <li key={idx}>{r}</li>
+                        <li
+                          key={idx}
+                          style={{
+                            marginBottom: 6,
+                            color: "#555",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {r}
+                        </li>
                       ))}
                     </ul>
                   </div>
                 )}
-                {/* Project Submission Form */}
                 <ProjectSubmissionForm
                   userId={userId}
                   lessonId={lessonId}
@@ -219,8 +427,8 @@ export default function LessonView({ lessonId, userId, lessonData: lessonDataPro
                   subtopic={lessonData?.title}
                   rubric={projectData.rubric}
                   onGraded={({ grade, feedback }) => {
-                    setIsComplete(true);
-                    setProgress(100);
+                    setIsComplete(true)
+                    setProgress(100)
                   }}
                 />
               </div>
@@ -228,7 +436,8 @@ export default function LessonView({ lessonId, userId, lessonData: lessonDataPro
           </div>
         )}
       </div>
-      {/* Progress Footer */}
+
+      {/* Enhanced Progress Footer */}
       <ProgressFooter
         lessonId={lessonId}
         isComplete={isComplete}
@@ -236,28 +445,41 @@ export default function LessonView({ lessonId, userId, lessonData: lessonDataPro
         onNextLesson={handleNextLesson}
         progress={progress}
       />
+
       {/* Progress error message */}
-      {progressError && <div style={{ color: '#e53935', marginTop: 10 }}>{progressError}</div>}
-      {/* Placeholder for future AI assistant/resource sidebar */}
-      {/* <AIAssistantSidebar lessonId={lessonId} /> */}
+      {progressError && (
+        <div
+          style={{
+            color: "#ff5252",
+            marginTop: 12,
+            padding: "0.8rem 1rem",
+            background: "rgba(255, 82, 82, 0.1)",
+            borderRadius: 8,
+            border: "1px solid rgba(255, 82, 82, 0.2)",
+            fontSize: 14,
+          }}
+        >
+          ⚠️ {progressError}
+        </div>
+      )}
     </div>
-  );
+  )
 }
 
-// Add ProjectSubmissionForm component at the bottom of the file
+// Enhanced ProjectSubmissionForm component
 function ProjectSubmissionForm({ userId, lessonId, courseTitle, moduleTitle, subtopic, rubric, onGraded }) {
-  const [submission, setSubmission] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [grade, setGrade] = useState(null);
-  const [feedback, setFeedback] = useState("");
-  const [error, setError] = useState("");
+  const [submission, setSubmission] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [grade, setGrade] = useState(null)
+  const [feedback, setFeedback] = useState("")
+  const [error, setError] = useState("")
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    setGrade(null);
-    setFeedback("");
+    e.preventDefault()
+    setLoading(true)
+    setError("")
+    setGrade(null)
+    setFeedback("")
     try {
       const res = await fetch("/api/submit-project", {
         method: "POST",
@@ -269,52 +491,186 @@ function ProjectSubmissionForm({ userId, lessonId, courseTitle, moduleTitle, sub
           moduleTitle,
           subtopic,
           projectSubmission: submission,
-          rubric
-        })
-      });
-      if (!res.ok) throw new Error("Failed to submit project for grading");
-      const data = await res.json();
-      setGrade(data.grade);
-      setFeedback(data.feedback);
-      if (onGraded) onGraded({ grade: data.grade, feedback: data.feedback });
+          rubric,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to submit project for grading")
+      const data = await res.json()
+      setGrade(data.grade)
+      setFeedback(data.feedback)
+      if (onGraded) onGraded({ grade: data.grade, feedback: data.feedback })
     } catch (err) {
-      setError(err.message || "Submission failed");
+      setError(err.message || "Submission failed")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <form onSubmit={handleSubmit} style={{ marginTop: 24 }}>
-      <label style={{ fontWeight: 600, color: '#3576d3', marginBottom: 8, display: 'block' }}>
-        Submit your project:
+    <form onSubmit={handleSubmit} style={{ marginTop: 32 }}>
+      <label
+        style={{
+          fontWeight: 600,
+          color: "#ab47bc",
+          marginBottom: 12,
+          display: "block",
+          fontSize: 16,
+        }}
+      >
+        🚀 Submit your project:
       </label>
       <textarea
         value={submission}
-        onChange={e => setSubmission(e.target.value)}
+        onChange={(e) => setSubmission(e.target.value)}
         placeholder="Paste your project code, link, or description here..."
-        style={{ width: '100%', minHeight: 120, borderRadius: 8, border: '1.5px solid #e0e0e0', padding: '0.7rem', fontSize: '1em', marginBottom: 10 }}
+        style={{
+          width: "100%",
+          minHeight: 140,
+          borderRadius: 12,
+          border: "2px solid rgba(171, 71, 188, 0.2)",
+          padding: "1rem 1.2rem",
+          fontSize: "1em",
+          marginBottom: 16,
+          fontFamily: "inherit",
+          background: "rgba(255, 255, 255, 0.9)",
+          transition: "all 0.3s ease",
+          resize: "vertical",
+        }}
         required
         disabled={loading}
+        onFocus={(e) => {
+          e.target.style.borderColor = "#ab47bc"
+          e.target.style.boxShadow = "0 0 0 3px rgba(171, 71, 188, 0.1)"
+        }}
+        onBlur={(e) => {
+          e.target.style.borderColor = "rgba(171, 71, 188, 0.2)"
+          e.target.style.boxShadow = "none"
+        }}
       />
       <button
         type="submit"
         disabled={loading || !submission}
-        style={{ background: '#4f8cff', color: '#fff', border: 'none', borderRadius: 8, padding: '0.7rem 1.5rem', fontWeight: 600, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1 }}
+        style={{
+          background: loading
+            ? "linear-gradient(135deg, #cccccc 0%, #aaaaaa 100%)"
+            : "linear-gradient(135deg, #ab47bc 0%, #ffa726 100%)",
+          color: "#fff",
+          border: "none",
+          borderRadius: 12,
+          padding: "1rem 2rem",
+          fontWeight: 700,
+          fontSize: 16,
+          cursor: loading ? "default" : "pointer",
+          opacity: loading || !submission ? 0.7 : 1,
+          boxShadow: loading ? "none" : "0 4px 15px rgba(171, 71, 188, 0.3)",
+          transition: "all 0.3s ease",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+        onMouseEnter={(e) => {
+          if (!loading && submission) {
+            e.target.style.transform = "translateY(-2px)"
+            e.target.style.boxShadow = "0 6px 20px rgba(171, 71, 188, 0.4)"
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!loading && submission) {
+            e.target.style.transform = "translateY(0)"
+            e.target.style.boxShadow = "0 4px 15px rgba(171, 71, 188, 0.3)"
+          }
+        }}
       >
-        {loading ? 'Grading...' : 'Submit Project for Grading'}
+        {loading ? (
+          <>
+            <div
+              style={{
+                width: 16,
+                height: 16,
+                border: "2px solid rgba(255, 255, 255, 0.3)",
+                borderTop: "2px solid #fff",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+              }}
+            />
+            Grading...
+          </>
+        ) : (
+          <>
+            <FaRocket style={{ fontSize: 16 }} />
+            Submit for AI Grading
+          </>
+        )}
       </button>
+
       {grade !== null && (
-        <div style={{ marginTop: 18, fontWeight: 700, color: grade >= 60 ? '#43a047' : '#e53935', fontSize: 18 }}>
-          Grade: {grade} / 100
+        <div
+          style={{
+            marginTop: 20,
+            padding: "1.2rem 1.5rem",
+            background:
+              grade >= 60
+                ? "linear-gradient(135deg, rgba(102, 187, 106, 0.1) 0%, rgba(76, 175, 80, 0.1) 100%)"
+                : "linear-gradient(135deg, rgba(255, 82, 82, 0.1) 0%, rgba(244, 67, 54, 0.1) 100%)",
+            borderRadius: 12,
+            border: `2px solid ${grade >= 60 ? "rgba(102, 187, 106, 0.3)" : "rgba(255, 82, 82, 0.3)"}`,
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 700,
+              color: grade >= 60 ? "#66bb6a" : "#ff5252",
+              fontSize: 20,
+              marginBottom: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {grade >= 60 ? "🎉" : "📝"} Grade: {grade} / 100
+          </div>
+          {feedback && (
+            <div
+              style={{
+                background: "rgba(255, 255, 255, 0.8)",
+                borderRadius: 8,
+                padding: "1rem 1.2rem",
+                color: "#555",
+                fontWeight: 500,
+                lineHeight: 1.5,
+              }}
+            >
+              <strong style={{ color: "#ab47bc" }}>AI Feedback:</strong> {feedback}
+            </div>
+          )}
         </div>
       )}
-      {feedback && (
-        <div style={{ marginTop: 10, background: '#e3eefe', borderRadius: 8, padding: '1rem 1.5rem', color: '#3576d3', fontWeight: 500 }}>
-          <strong>AI Feedback:</strong> {feedback}
+
+      {error && (
+        <div
+          style={{
+            color: "#ff5252",
+            marginTop: 12,
+            padding: "0.8rem 1rem",
+            background: "rgba(255, 82, 82, 0.1)",
+            borderRadius: 8,
+            border: "1px solid rgba(255, 82, 82, 0.2)",
+            fontSize: 14,
+          }}
+        >
+          ⚠️ {error}
         </div>
       )}
-      {error && <div style={{ color: '#e53935', marginTop: 10 }}>{error}</div>}
+
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
     </form>
-  );
+  )
 }
+

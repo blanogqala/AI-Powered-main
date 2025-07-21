@@ -38,7 +38,8 @@ export default function GeneratedLearningPath({ result, formData, onStartLearnin
   const handleStartLearning = async () => {
     try {
       if (setEnrolling) setEnrolling(true) // Show loading overlay
-      await fetch("/api/enroll-learning-path", {
+      const API_URL = process.env.REACT_APP_API_URL || ""
+      await fetch(`${API_URL}/api/enroll-learning-path`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, learningPath: result }),

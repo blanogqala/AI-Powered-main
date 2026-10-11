@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 "use client"
 
 import { useEffect, useState } from "react"
@@ -141,7 +142,7 @@ function CoursesList({ courses, loading, user, refreshCourses, setEnrolling, han
     setEnrollAbortController(controller)
     try {
       if (setEnrolling) setEnrolling(true)
-      await fetch(`${API_URL}/api/enroll-learning-path`, {
+      await apiFetch(`${API_URL}/api/enroll-learning-path`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user?.uid || "demoUser", learningPath }),
@@ -169,7 +170,7 @@ function CoursesList({ courses, loading, user, refreshCourses, setEnrolling, han
     e.stopPropagation()
     setDeleting((prev) => ({ ...prev, [course.title]: true }))
     try {
-      await fetch(`${API_URL}/api/delete-enrollment`, {
+      await apiFetch(`${API_URL}/api/delete-enrollment`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user?.uid || "demoUser", courseTitle: course.title }),
@@ -994,56 +995,20 @@ function CourseLessonView({ courses }) {
   // Fix: modules rendering
   const modules = Object.entries(course.curriculum || {})
 
-  // Helper to transform AI content to lesson object for LessonView
-  const aiToLessonObject = (weekKey, lessonTitle, aiContent) => {
-    const intro = typeof aiContent === "string" ? aiContent : aiContent?.intro || ""
-    let points = []
-    let advancedTips = []
-    if (typeof aiContent === "object" && aiContent) {
-      points = aiContent.points || []
-      advancedTips = aiContent.advancedTips || []
-    } else {
-      points = intro.split(". ").map((t, i) => ({ text: t, tooltip: "" }))
-    }
-    return {
-      title: lessonTitle,
-      intro,
-      points,
-      advancedTips,
-    }
-  }
-
   const handleViewLesson = async (weekKey, lessonTitle) => {
     setLoadingLesson(true)
     setShowLessonModal(true)
     setSelectedLesson(null)
     try {
-      const res = await fetch(`${API_URL}/api/generate-content`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: course.title,
-          timeline: course.timeline,
-          level: course.level,
-          userId: user?.uid || "demoUser",
-        }),
+      const res = await apiFetch(`${API_URL}/api/generate-lesson`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseTitle: course.title, moduleTitle: course.curriculum[weekKey].header || weekKey, subtopic: lessonTitle, timeline: course.timeline || 3, level: course.level || "Beginner", userId: user.uid })
       })
-      const data = await res.json()
-      const aiContent = data.content[weekKey]
-      setSelectedLesson(aiToLessonObject(weekKey, lessonTitle, aiContent))
+      setSelectedLesson(await res.json())
     } catch (err) {
-      setSelectedLesson({
-        title: lessonTitle,
-        intro: `Welcome to ${lessonTitle}! (AI content unavailable)`,
-        points: [
-          { text: `Main concept of ${lessonTitle}`, tooltip: `More about ${lessonTitle}` },
-          { text: `Practical example for ${lessonTitle}`, tooltip: `Example details for ${lessonTitle}` },
-        ],
-        advancedTips: [`Advanced tip 1 for ${lessonTitle}`, `Advanced tip 2 for ${lessonTitle}`],
-      })
-    } finally {
-      setLoadingLesson(false)
-    }
+      setShowLessonModal(false)
+      alert(err.message || "Unable to load this lesson. Please try again.")
+    } finally { setLoadingLesson(false) }
   }
 
   const handleCompleteLesson = (weekKey) => {
@@ -1197,7 +1162,7 @@ function CourseLessonView({ courses }) {
             />
           </div>
         )}
-        {selectedLesson && <LessonView lesson={selectedLesson} />}
+        {selectedLesson && <LessonView key={selectedLesson.lesson.title} lessonId={encodeURIComponent(`${course.title}_${selectedLesson.lesson.moduleTitle}_${selectedLesson.lesson.subtopic}`)} userId={user.uid} lessonData={selectedLesson.lesson} quizData={selectedLesson.quiz} projectData={selectedLesson.project} />}
       </Modal>
     </div>
   )
@@ -1224,7 +1189,7 @@ export default function Dashboard() {
   const refreshCourses = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/api/my-courses?userId=${user?.uid || "demoUser"}`)
+      const res = await apiFetch(`${API_URL}/api/my-courses?userId=${user?.uid || "demoUser"}`)
       const data = await res.json()
       setCourses(data.enrollments || [])
     } catch (err) {

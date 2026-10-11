@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 "use client"
 
 import { FaCheck, FaArrowRight, FaClock, FaRocket } from "react-icons/fa"
@@ -5,7 +6,7 @@ import { FaCheck, FaArrowRight, FaClock, FaRocket } from "react-icons/fa"
 export default function ProgressFooter({ lessonId, isComplete, onMarkComplete, onNextLesson, progress }) {
   async function saveProgress({ userId, courseId, lessonId }) {
     try {
-      await fetch("/api/save-progress", {
+      await apiFetch("/api/save-progress", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, courseId, lessonId }),

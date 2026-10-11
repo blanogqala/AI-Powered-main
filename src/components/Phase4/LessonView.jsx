@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 "use client"
 
 import { useState, useEffect } from "react"
@@ -34,7 +35,7 @@ export default function LessonView({ lessonId, userId, lessonData: lessonDataPro
       setLoading(true)
       setError("")
       try {
-        const res = await fetch("/api/generate-lesson", {
+        const res = await apiFetch("/api/generate-lesson", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -424,7 +425,7 @@ export default function LessonView({ lessonId, userId, lessonData: lessonDataPro
                   lessonId={lessonId}
                   courseTitle={lessonData?.courseTitle}
                   moduleTitle={lessonData?.moduleTitle}
-                  subtopic={lessonData?.title}
+                  subtopic={lessonData?.subtopic || lessonData?.title}
                   rubric={projectData.rubric}
                   onGraded={({ grade, feedback }) => {
                     setIsComplete(true)
@@ -481,7 +482,7 @@ function ProjectSubmissionForm({ userId, lessonId, courseTitle, moduleTitle, sub
     setGrade(null)
     setFeedback("")
     try {
-      const res = await fetch("/api/submit-project", {
+      const res = await apiFetch("/api/submit-project", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

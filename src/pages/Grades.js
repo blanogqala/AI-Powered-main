@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Skeleton from 'react-loading-skeleton';
@@ -5,7 +6,7 @@ import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 
 async function fetchGrades() {
-  const res = await fetch('/api/grades');
+  const res = await apiFetch('/api/grades');
   if (!res.ok) throw new Error('Failed to load grades');
   return res.json();
 }

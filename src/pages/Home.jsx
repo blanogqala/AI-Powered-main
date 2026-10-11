@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 "use client"
 
 import { useState, useEffect } from "react"
@@ -43,7 +44,7 @@ export default function Home() {
     const controller = new AbortController()
     setAbortController(controller)
     try {
-      const res = await fetch(`${API_URL}/api/generateLearningPath`, {
+      const res = await apiFetch(`${API_URL}/api/generateLearningPath`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -63,7 +64,7 @@ export default function Home() {
       }
     } catch (err) {
       if (err.name !== "AbortError") {
-        alert("Failed to generate learning path.")
+        alert(err.message || "Failed to generate learning path.")
       }
     } finally {
       setLoading(false)

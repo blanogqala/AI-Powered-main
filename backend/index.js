@@ -27,11 +27,25 @@ const app = express();
 app.use(cors({
   origin: [
     "https://astonishing-semolina-112792.netlify.app",
-    "http://localhost:3000"
+    "http://localhost:3000",
+    ...(process.env.FRONTEND_URLS || "").split(",").filter(Boolean)
   ],
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '64kb' }));
+const { requireAuth } = require('./middleware/auth');
+app.use('/api', requireAuth);
+// Bound per-user AI requests. Provider quotas are enforced by Groq as well.
+const requests = new Map();
+app.use('/api', (req, res, next) => {
+  if (!/generate|grade|submit-project/.test(req.path)) return next();
+  const now = Date.now();
+  for (const [key, value] of requests) if (now - value.start > 60000) requests.delete(key);
+  const entry = requests.get(req.user.uid) || { start: now, count: 0 };
+  if (++entry.count > 8) return res.status(429).json({ error: 'Please wait a minute before generating more content.' });
+  requests.set(req.user.uid, entry);
+  next();
+});
 
 app.use("/api/generateLearningPath", generateLearningPath);
 app.use('/api/enroll-learning-path', enrollLearningPath);
@@ -45,7 +59,7 @@ app.post('/api/generate-curriculum', async (req, res) => {
     const result = await managerAgent({ topic, timeline, level, userId });
     res.json(result);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.message });
   }
 });
 
@@ -58,43 +72,7 @@ app.post('/api/generate-learning-path', async (req, res) => {
     const result = await managerAgent({ topic, timeline, level, userId });
     res.json(result);
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Failed to generate learning path.' });
-  }
-});
-
-app.post('/api/enroll-learning-path', async (req, res) => {
-  const { userId, learningPath } = req.body;
-  if (!userId || !learningPath) {
-    return res.status(400).json({ error: 'Missing required fields: userId, learningPath.' });
-  }
-  try {
-    await saveCurriculum(userId, learningPath);
-    // Generate and store lessons and quizzes for each module/week/lesson
-    const courseTitle = learningPath.title;
-    const modules = learningPath.curriculum || {};
-    const level = learningPath.level;
-    const timeline = learningPath.timeline;
-    for (const [weekKey, moduleObj] of Object.entries(modules)) {
-      const moduleTitle = moduleObj.header || weekKey;
-      const lessons = Array.isArray(moduleObj.lessons) ? moduleObj.lessons : [];
-      for (const subtopic of lessons) {
-        // Check if lesson already exists for this user
-        const lessonDocPath = `users/${userId}/courses/${courseTitle}/modules/${moduleTitle}/lessons/${subtopic}`;
-        const lessonDocRef = admin.firestore().doc(lessonDocPath);
-        const lessonSnap = await lessonDocRef.get();
-        if (!lessonSnap.exists) {
-          // Generate lesson content
-          const lesson = await generateLessonContent({ courseTitle, moduleTitle, subtopic, level, timeline });
-          await saveLessonContent({ courseTitle, moduleTitle, subtopic, lesson, userId });
-          // Generate quiz for this lesson
-          const quiz = await generateQuiz({ lessonTitle: subtopic });
-          await saveUserQuiz({ userId, courseTitle, moduleTitle, subtopic, quiz });
-        }
-      }
-    }
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message || 'Failed to enroll in learning path.' });
+    res.status(error.status || 500).json({ error: error.message || 'Failed to generate learning path.' });
   }
 });
 
@@ -107,7 +85,7 @@ app.get('/api/my-courses', async (req, res) => {
     const enrollments = await getCurriculum(userId);
     res.json({ enrollments });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Failed to fetch courses.' });
+    res.status(error.status || 500).json({ error: error.message || 'Failed to fetch courses.' });
   }
 });
 
@@ -121,7 +99,7 @@ app.post('/api/generate-content', async (req, res) => {
     const content = await generateContent(topic, timeline, level);
     res.json({ content });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Failed to generate content.' });
+    res.status(error.status || 500).json({ error: error.message || 'Failed to generate content.' });
   }
 });
 
@@ -135,7 +113,7 @@ app.post('/api/generate-assessment', async (req, res) => {
     const assessment = await generateAssessment(topic, timeline, level);
     res.json({ assessment });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Failed to generate assessment.' });
+    res.status(error.status || 500).json({ error: error.message || 'Failed to generate assessment.' });
   }
 });
 
@@ -149,7 +127,7 @@ app.post('/api/generate-resources', async (req, res) => {
     const resources = await generateResources(topic, timeline, level);
     res.json({ resources });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Failed to generate resources.' });
+    res.status(error.status || 500).json({ error: error.message || 'Failed to generate resources.' });
   }
 });
 
@@ -178,7 +156,7 @@ app.post('/api/submit-project', async (req, res) => {
     });
     res.json({ grade: grading.grade, feedback: grading.feedback });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Failed to grade project.' });
+    res.status(error.status || 500).json({ error: error.message || 'Failed to grade project.' });
   }
 });
 
@@ -192,7 +170,7 @@ app.post('/api/grade-short-answer', async (req, res) => {
     const result = await gradeShortAnswer({ question, correct, userAnswer });
     res.json(result);
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Failed to grade short answer.' });
+    res.status(error.status || 500).json({ error: error.message || 'Failed to grade short answer.' });
   }
 });
 
@@ -227,7 +205,7 @@ app.post('/api/complete-course', async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     console.error('Error in /api/complete-course:', error.message);
-    return res.status(500).json({ error: error.message || 'Failed to mark course as completed.' });
+    return res.status(error.status || 500).json({ error: error.message || 'Failed to mark course as completed.' });
   }
 });
 
@@ -248,24 +226,18 @@ app.delete('/api/delete-enrollment', async (req, res) => {
       res.status(404).json({ error: result.message || 'Course not found.' });
     }
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Failed to delete enrollment.' });
+    res.status(error.status || 500).json({ error: error.message || 'Failed to delete enrollment.' });
   }
 });
 
-app.get('/firestore-test', async (req, res) => {
-  try {
-    const snapshot = await admin.firestore().collection('curriculums').limit(1).get();
-    res.json({ success: true, count: snapshot.size });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 app.get('/test', (req, res) => {
   res.json({ message: "Backend is working and public!" });
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+if (require.main === module) app.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
 });
+
+module.exports = app;

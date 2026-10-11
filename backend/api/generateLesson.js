@@ -12,7 +12,6 @@ function sanitizeId(str) {
 }
 
 router.post('/', async (req, res) => {
-  console.log('generate-lesson request body:', req.body); // Add this line
   const { userId, courseTitle, moduleTitle, subtopic, level, timeline } = req.body;
   if (!userId || !courseTitle || !moduleTitle || !subtopic || !level || !timeline) {
     return res.status(400).json({ error: 'Missing required fields.' });
@@ -26,10 +25,6 @@ router.post('/', async (req, res) => {
     const projectDocRef = admin.firestore().doc(projectDocPath);
 
     // Extra logging for debugging
-    console.log('[DEBUG] Firestore lesson path:', lessonDocPath);
-    console.log('[DEBUG] Firestore quiz path:', quizDocPath);
-    console.log('[DEBUG] Firestore project path:', projectDocPath);
-    console.log('[DEBUG] Payload:', { userId, courseTitle, moduleTitle, subtopic, level, timeline });
 
     // Try to fetch existing lesson, quiz, and project
     const [lessonSnap, quizSnap, projectSnap] = await Promise.all([
@@ -47,19 +42,19 @@ router.post('/', async (req, res) => {
       lesson = await generateLessonContent({ courseTitle, moduleTitle, subtopic, level, timeline });
       await lessonDocRef.set(lesson);
     }
-    if (!quiz) {
+    if (!Array.isArray(quiz) || quiz.length === 0) {
       quiz = await generateQuiz({ lessonTitle: subtopic, lessonBody: lesson.body, courseTitle, moduleTitle });
       await quizDocRef.set({ quiz });
     }
-    if (!project) {
+    if (!project || !project.title) {
       project = await generateProject({ lessonTitle: subtopic, lessonBody: lesson.body, courseTitle, moduleTitle });
       await projectDocRef.set({ project });
     }
 
-    res.status(200).json({ lesson, quiz, project });
+    res.status(200).json({ lesson: { ...lesson, courseTitle, moduleTitle, subtopic }, quiz, project });
   } catch (error) {
     console.error('generate-lesson error:', error);
-    res.status(500).json({ error: error.message, stack: error.stack });
+    res.status(error.status || 500).json({ error: error.message });
   }
 });
 

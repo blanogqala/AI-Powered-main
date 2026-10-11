@@ -13,7 +13,7 @@ router.post('/', async (req, res) => {
     await saveCurriculum(userId, learningPath);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message || 'Failed to enroll' });
+    res.status(err.status || 500).json({ error: err.message || 'Failed to enroll' });
   }
 });
 

@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import React, { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
 import { useLocation } from "react-router-dom";
@@ -19,7 +20,7 @@ export default function Purchases() {
     async function fetchCourses() {
       setLoading(true);
       try {
-        const res = await fetch(`${API_URL}/api/my-courses?userId=${user?.uid || "demoUser"}`);
+        const res = await apiFetch(`${API_URL}/api/my-courses?userId=${user?.uid || "demoUser"}`);
         const data = await res.json();
         setCourses(data.enrollments || []);
       } catch {

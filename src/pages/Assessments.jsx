@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Skeleton from 'react-loading-skeleton';
@@ -6,7 +7,7 @@ import { motion } from 'framer-motion';
 import AssessmentCard from '../components/AssessmentCard';
 
 async function fetchAssessments() {
-  const res = await fetch('/api/assessments');
+  const res = await apiFetch('/api/assessments');
   if (!res.ok) throw new Error('Failed to load data');
   return res.json();
 }

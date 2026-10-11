@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import React, { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
 
@@ -13,7 +14,7 @@ export default function Badges() {
       setLoading(true);
       try {
         // Fetch completed courses (badges) from backend
-        const res = await fetch(`${API_URL}/api/my-courses?userId=${user?.uid || "demoUser"}`);
+        const res = await apiFetch(`${API_URL}/api/my-courses?userId=${user?.uid || "demoUser"}`);
         const data = await res.json();
         // Filter for completed courses (assume a 'completedAt' field exists)
         let completed = (data.enrollments || []).filter(c => c.completedAt);

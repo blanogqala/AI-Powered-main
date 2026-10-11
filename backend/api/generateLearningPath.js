@@ -28,7 +28,7 @@ router.post("/", async (req, res) => {
     return res.status(200).json({ learningPaths, savedIds });
   } catch (err) {
     console.error("generateLearningPath error:", err);
-    return res.status(500).json({ error: err.message });
+    return res.status(err.status || 500).json({ error: err.message });
   }
 });
 

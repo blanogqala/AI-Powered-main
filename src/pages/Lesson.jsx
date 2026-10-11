@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 "use client"
 
 import { useEffect, useState } from "react"
@@ -38,6 +39,8 @@ export default function Lesson() {
   const [expandedModule, setExpandedModule] = useState(null)
   const [selectedSubtopic, setSelectedSubtopic] = useState({ moduleIdx: 0, subIdx: 0 })
   const [lessonContent, setLessonContent] = useState(null)
+  const [lessonError, setLessonError] = useState("")
+  const [lessonRetry, setLessonRetry] = useState(0)
   const [completedTopics, setCompletedTopics] = useState([]) // [{moduleIdx, subIdx}]
   const [progress, setProgress] = useState(0)
   const navigate = useNavigate()
@@ -48,12 +51,12 @@ export default function Lesson() {
     async function fetchCourse() {
       setLoading(true)
       try {
-        const res = await fetch(`${API_URL}/api/my-courses?userId=${user?.uid || "demoUser"}`)
+        const res = await apiFetch(`${API_URL}/api/my-courses?userId=${user?.uid || "demoUser"}`)
         const data = await res.json()
         const found = (data.enrollments || []).find((c) => c.title === courseTitle)
         setCourse(found || null)
         // Load completed topics from localStorage
-        const saved = localStorage.getItem(`completedTopics_${encodeURIComponent(courseTitle)}`)
+        const saved = localStorage.getItem(`completedTopics_${user?.uid}_${encodeURIComponent(courseTitle)}`)
         if (saved) {
           const { completedTopics, progress } = JSON.parse(saved)
           setCompletedTopics(completedTopics)
@@ -70,15 +73,18 @@ export default function Lesson() {
 
   // Fetch lesson content, quiz, and project for selected subtopic
   useEffect(() => {
+    let active = true
+    const controller = new AbortController()
     async function fetchLesson() {
       if (!course) return
       const modules = Object.entries(course.curriculum || {})
+      if (!modules[selectedSubtopic.moduleIdx]) return
       const [modKey, modObj] = modules[selectedSubtopic.moduleIdx]
       const subtopics = getSubtopics(modObj)
       const subtopic = subtopics[selectedSubtopic.subIdx]
       setLessonContent(null)
+      setLessonError("")
       setLessonLoading(true)
-      const controller = new AbortController()
       setLessonAbortController(controller)
 
       const payload = {
@@ -91,34 +97,23 @@ export default function Lesson() {
       }
 
       try {
-        const res = await fetch(`${API_URL}/api/generate-lesson`, {
+        const res = await apiFetch(`${API_URL}/api/generate-lesson`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
           signal: controller.signal,
         })
         const data = await res.json()
-        setLessonContent(data)
+        if (active) setLessonContent(data)
       } catch (err) {
-        if (err.name !== "AbortError") {
-          setLessonContent({
-            lesson: {
-              title: subtopic,
-              objectives: [`Understand the basics of ${subtopic}`, `Apply ${subtopic} in practice`],
-              body: `Welcome to ${subtopic}! (AI content unavailable)`,
-              summary: `Key takeaways for ${subtopic}`,
-            },
-            quiz: [],
-            project: null,
-          })
-        }
+        if (active && err.name !== "AbortError") setLessonError(err.message || "Unable to generate this lesson. Please retry.")
       } finally {
-        setLessonLoading(false)
-        setLessonAbortController(null)
+        if (active) { setLessonLoading(false); setLessonAbortController(null) }
       }
     }
     if (course) fetchLesson()
-  }, [course, selectedSubtopic, user])
+    return () => { active = false; controller.abort() }
+  }, [course, selectedSubtopic, user, lessonRetry])
 
   // Update progress when completedTopics changes
   useEffect(() => {
@@ -131,7 +126,7 @@ export default function Lesson() {
     const prog = totalTopics > 0 ? Math.round((completedTopics.length / totalTopics) * 100) : 0
     setProgress(prog)
     localStorage.setItem(
-      `completedTopics_${encodeURIComponent(courseTitle)}`,
+      `completedTopics_${user?.uid}_${encodeURIComponent(courseTitle)}`,
       JSON.stringify({ completedTopics, progress: prog }),
     )
   }, [completedTopics, course, courseTitle])
@@ -141,7 +136,7 @@ export default function Lesson() {
     if (progress === 100 && course) {
       const saveBadge = async () => {
         try {
-          await fetch(`${API_URL}/api/complete-course`, {
+          await apiFetch(`${API_URL}/api/complete-course`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -824,9 +819,11 @@ export default function Lesson() {
               }}
             />
 
+            {lessonError && <div role="alert"><p>{lessonError}</p><button onClick={() => setLessonRetry(value => value + 1)}>Retry lesson</button></div>}
             {lessonContent && (
               <LessonView
-                lessonId={lessonContent.lesson?.title}
+                key={`${courseTitle}_${selectedSubtopic.moduleIdx}_${selectedSubtopic.subIdx}`}
+                lessonId={encodeURIComponent(`${courseTitle}_${selectedSubtopic.moduleIdx}_${selectedSubtopic.subIdx}`)}
                 userId={user?.uid || "demoUser"}
                 lessonData={lessonContent.lesson}
                 quizData={lessonContent.quiz}

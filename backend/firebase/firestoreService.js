@@ -1,27 +1,17 @@
 const admin = require('firebase-admin');
 
-let serviceAccount;
-if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  if (serviceAccount.private_key) {
-    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-  }
-} else if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-  serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-  if (serviceAccount.private_key) {
-    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-  }
-} else {
-  serviceAccount = require('./learning-platform-3364f-ee05c72a092a.json');
-}
-
+// Service-account secrets must be configured on the server, never committed.
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    projectId: serviceAccount.project_id,
-    databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`,
-  });
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT || process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+  if (raw) {
+    const account = JSON.parse(raw);
+    if (account.private_key) account.private_key = account.private_key.replace(/\\n/g, '\n');
+    admin.initializeApp({ credential: admin.credential.cert(account), projectId: account.project_id });
+  } else {
+    admin.initializeApp({ credential: admin.credential.applicationDefault(), projectId: process.env.FIREBASE_PROJECT_ID });
+  }
 }
+function sanitizeId(value) { return String(value).replace(/[.#$/\[\]]/g, '-'); }
 const db = admin.firestore();
 
 async function saveCurriculum(userId, learningPath) {
@@ -82,7 +72,7 @@ async function deleteCurriculum(userId, courseTitle) {
 // New: Save lesson content in Firestore
 async function saveLessonContent({ courseTitle, moduleTitle, subtopic, lesson }) {
   try {
-    const docPath = `courses/${courseTitle}/modules/${moduleTitle}/lessons/${subtopic}`;
+    const docPath = `courses/${sanitizeId(courseTitle)}/modules/${sanitizeId(moduleTitle)}/lessons/${sanitizeId(subtopic)}`;
     const docRef = db.doc(docPath);
     await docRef.set(lesson);
     return { success: true };
@@ -133,7 +123,7 @@ async function saveLearningPaths({ topic, timeline, level, learningPaths }) {
 // Save quiz for a user, course, module, and lesson
 async function saveUserQuiz({ userId, courseTitle, moduleTitle, subtopic, quiz }) {
   try {
-    const docPath = `users/${userId}/courses/${courseTitle}/modules/${moduleTitle}/lessons/${subtopic}/quiz/quizDoc`;
+    const docPath = `users/${userId}/courses/${sanitizeId(courseTitle)}/modules/${sanitizeId(moduleTitle)}/lessons/${sanitizeId(subtopic)}/quiz/quizDoc`;
     const docRef = db.doc(docPath);
     await docRef.set({ quiz });
     return { success: true };
@@ -146,7 +136,7 @@ async function saveUserQuiz({ userId, courseTitle, moduleTitle, subtopic, quiz }
 // Save project grade for a user, course, module, and lesson
 async function saveUserProjectGrade({ userId, courseTitle, moduleTitle, subtopic, grade, feedback }) {
   try {
-    const docPath = `users/${userId}/courses/${courseTitle}/modules/${moduleTitle}/lessons/${subtopic}/project/gradeDoc`;
+    const docPath = `users/${userId}/courses/${sanitizeId(courseTitle)}/modules/${sanitizeId(moduleTitle)}/lessons/${sanitizeId(subtopic)}/project/gradeDoc`;
     const docRef = db.doc(docPath);
     await docRef.set({ grade, feedback });
     return { success: true };

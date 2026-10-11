@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 "use client"
 
 import { useState, useEffect } from "react"
@@ -17,7 +18,7 @@ export default function GeneratedLearningPath({ result, formData, onStartLearnin
   useEffect(() => {
     if (tab === "resources" && !resources && !loadingResources) {
       setLoadingResources(true)
-      fetch("/api/generate-resources", {
+      apiFetch("/api/generate-resources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -39,10 +40,10 @@ export default function GeneratedLearningPath({ result, formData, onStartLearnin
     try {
       if (setEnrolling) setEnrolling(true) // Show loading overlay
       const API_URL = process.env.REACT_APP_API_URL || ""
-      await fetch(`${API_URL}/api/enroll-learning-path`, {
+      await apiFetch(`${API_URL}/api/enroll-learning-path`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, learningPath: result }),
+        body: JSON.stringify({ userId, learningPath: { ...result, level: formData.level, timeline: formData.timeline } }),
       })
       // Remove from recommendedPaths in localStorage
       const recKey = `recommendedPaths_${userId}`
@@ -51,7 +52,7 @@ export default function GeneratedLearningPath({ result, formData, onStartLearnin
       localStorage.setItem(recKey, JSON.stringify(recArr))
       if (onStartLearning) onStartLearning()
     } catch (err) {
-      alert("Failed to enroll in this learning path.")
+      alert(err.message || "Failed to enroll in this learning path.")
     } finally {
       if (setEnrolling) setEnrolling(false) // Hide loading overlay
     }

@@ -12,7 +12,7 @@ router.post('/', async (req, res) => {
     await markLessonAsComplete({ userId, courseId, lessonId });
     res.status(200).json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.message });
   }
 });
 

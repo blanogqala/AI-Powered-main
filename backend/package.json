@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [],
   "author": "",
@@ -20,5 +20,8 @@
     "firebase-admin": "^11.11.1",
     "langchain": "^0.0.152",
     "openai": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

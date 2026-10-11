@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 import React, { useState, useEffect } from "react";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import app from "../../firebase";
@@ -57,7 +58,7 @@ export default function LessonQuiz({ lessonId, userId, quiz, lessonBody }) {
           // AI-based grading for short answer
           let aiResult = { score: 0, feedback: "" };
           try {
-            const res = await fetch("/api/grade-short-answer", {
+            const res = await apiFetch("/api/grade-short-answer", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -69,10 +70,10 @@ export default function LessonQuiz({ lessonId, userId, quiz, lessonBody }) {
             if (res.ok) {
               aiResult = await res.json();
             } else {
-              aiResult = { score: 0, feedback: "AI grading failed." };
+              throw new Error("AI grading is unavailable. Please retry; no score has been recorded.");
             }
-          } catch {
-            aiResult = { score: 0, feedback: "AI grading failed." };
+          } catch (error) {
+            throw new Error(error.message || "AI grading is unavailable. Please retry.");
           }
           fb[q.id] = {
             correct: aiResult.score === 1,
@@ -82,8 +83,7 @@ export default function LessonQuiz({ lessonId, userId, quiz, lessonBody }) {
           if (aiResult.score === 1) totalScore++;
         }
       }
-      setFeedback(fb);
-      setSubmitted(true);
+
       // Try Firestore first
       const attempt = {
         answers,
@@ -94,6 +94,8 @@ export default function LessonQuiz({ lessonId, userId, quiz, lessonBody }) {
       };
       const attemptRef = doc(db, "quizAttempts", `${userId}_${lessonId}`);
       await setDoc(attemptRef, attempt);
+      setFeedback(fb);
+      setSubmitted(true);
     } catch (err) {
       setError(err.message || "Submission failed");
     } finally {

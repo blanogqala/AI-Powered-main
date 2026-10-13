@@ -11,17 +11,17 @@ const { saveCurriculum, getCurriculum, deleteCurriculum, saveLessonContent, save
 const { generateContent } = require('./agents/contentGenerator');
 const { generateAssessment } = require('./agents/assessmentAgent');
 const { generateResources } = require('./agents/resourceAgent');
-const generateLessonRouter = require('./api/generateLesson');
-const generateQuizRouter = require('./api/generateQuiz');
-const saveProgressRouter = require('./api/saveProgress');
-const generateLearningPath = require("./api/generateLearningPath");
+const generateLessonRouter = require('./routes/generateLesson');
+const generateQuizRouter = require('./routes/generateQuiz');
+const saveProgressRouter = require('./routes/saveProgress');
+const generateLearningPath = require("./routes/generateLearningPath");
 const { generateLessonContent } = require('./agents/contentGenerator');
 const { generateQuiz } = require('./agents/assessmentAgent');
 const { gradeProjectSubmission } = require('./agents/assessmentAgent');
 const { saveUserProjectGrade } = require('./firebase/firestoreService');
 const { gradeShortAnswer } = require('./agents/assessmentAgent');
 const admin = require('firebase-admin');
-const enrollLearningPath = require('./api/enroll-learning-path');
+const enrollLearningPath = require('./routes/enroll-learning-path');
 
 const app = express();
 app.use(cors({
